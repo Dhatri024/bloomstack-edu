@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Clock, Users } from "lucide-react";
+import { BookOpen, Clock, Users, Play } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Courses() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [watching, setWatching] = useState<string | null>(null);
 
   useEffect(() => {
     loadCourses();
@@ -21,8 +23,7 @@ export default function Courses() {
       .from("courses")
       .select(`
         *,
-        profiles (full_name),
-        enrollments (count)
+        profiles (full_name)
       `)
       .order("created_at", { ascending: false });
 
@@ -30,30 +31,11 @@ export default function Courses() {
     setLoading(false);
   };
 
-  const handleEnroll = async (courseId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      toast.error("Please sign in to enroll");
-      return;
-    }
-
-    setEnrolling(courseId);
-    const { error } = await supabase
-      .from("enrollments")
-      .insert({ student_id: session.user.id, course_id: courseId });
-
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("You're already enrolled in this course");
-      } else {
-        toast.error("Failed to enroll in course");
-      }
-    } else {
-      toast.success("Successfully enrolled in course!");
-      loadCourses();
-    }
-    setEnrolling(null);
+  const handleWatchVideo = async (courseId: string) => {
+    setWatching(courseId);
+    // Navigate to video player immediately
+    navigate(`/courses/${courseId}/watch`);
+    setWatching(null);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -112,10 +94,6 @@ export default function Courses() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{course.enrollments?.[0]?.count || 0} enrolled</span>
-                    </div>
                     {course.category && (
                       <div className="flex items-center gap-1">
                         <BookOpen className="h-4 w-4" />
@@ -126,12 +104,22 @@ export default function Courses() {
                   <div className="text-sm text-muted-foreground">
                     Taught by <span className="font-medium text-foreground">{course.profiles?.full_name || "Instructor"}</span>
                   </div>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleEnroll(course.id)}
-                    disabled={enrolling === course.id}
+                  <Button
+                    className="w-full hover-lift card-hover"
+                    onClick={() => handleWatchVideo(course.id)}
+                    disabled={watching === course.id}
                   >
-                    {enrolling === course.id ? "Enrolling..." : "Enroll Now"}
+                    {watching === course.id ? (
+                      <>
+                        <Play className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Watch Video
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>

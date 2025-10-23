@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
 import CreateCourse from "./pages/CreateCourse";
 import ManageQuizzes from "./pages/ManageQuizzes";
+import VideoPlayer from "./pages/VideoPlayer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/create" element={<CreateCourse />} />
+          <Route path="/courses/:id/watch" element={<VideoPlayer />} />
           <Route path="/quizzes/manage" element={<ManageQuizzes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
@@ -9,12 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Search, Play } from "lucide-react";
 
 export default function CreateCourse() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [videoSuggestions, setVideoSuggestions] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
@@ -86,6 +89,74 @@ export default function CreateCourse() {
     const pattern = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+/;
     return pattern.test(url);
   };
+
+  const searchYouTubeVideos = async (query: string) => {
+    if (!query.trim()) {
+      setVideoSuggestions([]);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+      if (!YOUTUBE_API_KEY) {
+        toast({
+          title: "API Key Missing",
+          description: "YouTube API key not configured. Please add VITE_YOUTUBE_API_KEY to your environment variables.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+          query
+        )}&type=video&maxResults=5&key=${YOUTUBE_API_KEY}&order=relevance&safeSearch=strict`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch YouTube videos");
+      }
+
+      const data = await response.json();
+      setVideoSuggestions(data.items || []);
+    } catch (error) {
+      console.error("YouTube search error:", error);
+      toast({
+        title: "Search Failed",
+        description: "Unable to search YouTube videos. Please try again.",
+        variant: "destructive",
+      });
+      setVideoSuggestions([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const selectVideoSuggestion = (video: any) => {
+    const videoUrl = `https://www.youtube.com/watch?v=${video.id.videoId}`;
+    const title = video.snippet.title;
+    const description = video.snippet.description;
+
+    setFormData({
+      ...formData,
+      title: title || formData.title,
+      description: description || formData.description,
+      video_url: videoUrl,
+    });
+    setVideoSuggestions([]);
+    setSearchQuery("");
+  };
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchQuery) {
+        searchYouTubeVideos(searchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -167,20 +238,69 @@ export default function CreateCourse() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="video_url">YouTube Video URL</Label>
-                <Input
-                  id="video_url"
-                  type="url"
-                  value={formData.video_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, video_url: e.target.value })
-                  }
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
-                <p className="text-sm text-muted-foreground">
-                  Paste a YouTube URL from top lecturers
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="video_search">Search YouTube Videos</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="video_search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search for educational videos..."
+                      className="pl-10"
+                    />
+                    {searching && (
+                      <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  {videoSuggestions.length > 0 && (
+                    <Card className="shadow-card">
+                      <CardContent className="p-2">
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {videoSuggestions.map((video) => (
+                            <div
+                              key={video.id.videoId}
+                              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                              onClick={() => selectVideoSuggestion(video)}
+                            >
+                              <img
+                                src={video.snippet.thumbnails.default.url}
+                                alt={video.snippet.title}
+                                className="w-16 h-12 rounded object-cover"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium line-clamp-2">
+                                  {video.snippet.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {video.snippet.channelTitle}
+                                </p>
+                              </div>
+                              <Play className="h-4 w-4 text-primary" />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="video_url">YouTube Video URL</Label>
+                  <Input
+                    id="video_url"
+                    type="url"
+                    value={formData.video_url}
+                    onChange={(e) =>
+                      setFormData({ ...formData, video_url: e.target.value })
+                    }
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Search above or paste a YouTube URL directly
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-2">

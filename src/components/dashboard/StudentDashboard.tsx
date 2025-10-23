@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Trophy, Flame, Target } from "lucide-react";
+import { BookOpen, Trophy, Flame, Target, Play } from "lucide-react";
 
 export const StudentDashboard = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
-  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
 
   useEffect(() => {
@@ -24,18 +26,15 @@ export const StudentDashboard = () => {
       .eq("id", session.user.id)
       .single();
 
-    const { data: enrollmentsData } = await supabase
-      .from("enrollments")
+    // Load all available courses instead of enrollments
+    const { data: coursesData } = await supabase
+      .from("courses")
       .select(`
         *,
-        courses (
-          id,
-          title,
-          description,
-          thumbnail_url
-        )
+        profiles (full_name)
       `)
-      .eq("student_id", session.user.id);
+      .order("created_at", { ascending: false })
+      .limit(6); // Show recent courses
 
     const { data: badgesData } = await supabase
       .from("badges")
@@ -43,7 +42,7 @@ export const StudentDashboard = () => {
       .eq("student_id", session.user.id);
 
     setProfile(profileData);
-    setEnrollments(enrollmentsData || []);
+    setCourses(coursesData || []);
     setBadges(badgesData || []);
   };
 
@@ -70,12 +69,12 @@ export const StudentDashboard = () => {
 
         <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Enrolled Courses</CardTitle>
+            <CardTitle className="text-sm font-medium">Available Courses</CardTitle>
             <BookOpen className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{enrollments.length}</div>
-            <p className="text-xs text-muted-foreground">Active courses</p>
+            <div className="text-2xl font-bold">{courses.length}</div>
+            <p className="text-xs text-muted-foreground">Educational videos</p>
           </CardContent>
         </Card>
 
@@ -92,44 +91,48 @@ export const StudentDashboard = () => {
 
         <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
+            <CardTitle className="text-sm font-medium">Learning Streak</CardTitle>
             <Target className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {enrollments.length > 0
-                ? Math.round(enrollments.reduce((sum, e) => sum + e.progress, 0) / enrollments.length)
-                : 0}%
+              {profile?.streak_count || 0}
             </div>
-            <p className="text-xs text-muted-foreground">Overall progress</p>
+            <p className="text-xs text-muted-foreground">Days in a row</p>
           </CardContent>
         </Card>
       </div>
 
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>My Courses</CardTitle>
-          <CardDescription>Continue where you left off</CardDescription>
+          <CardTitle>Recent Courses</CardTitle>
+          <CardDescription>Explore the latest educational content</CardDescription>
         </CardHeader>
         <CardContent>
-          {enrollments.length === 0 ? (
+          {courses.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No courses enrolled yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Browse available courses to get started</p>
+              <p className="text-muted-foreground">No courses available yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Check back soon for new content</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {enrollments.map((enrollment) => (
-                <div key={enrollment.id} className="flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary transition-colors">
+              {courses.map((course) => (
+                <div key={course.id} className="flex items-center gap-4 p-4 rounded-lg border border-border hover-lift card-hover">
                   <div className="flex-1">
-                    <h3 className="font-semibold">{enrollment.courses.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{enrollment.courses.description}</p>
+                    <h3 className="font-semibold">{course.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{course.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      By {course.profiles?.full_name || "Instructor"}
+                    </p>
                   </div>
-                  <div className="w-32">
-                    <Progress value={enrollment.progress} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">{enrollment.progress}% complete</p>
-                  </div>
+                  <Button
+                    onClick={() => navigate(`/courses/${course.id}/watch`)}
+                    className="hover-lift"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Watch
+                  </Button>
                 </div>
               ))}
             </div>
