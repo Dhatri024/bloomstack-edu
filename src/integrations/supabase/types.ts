@@ -46,6 +46,7 @@ export type Database = {
       courses: {
         Row: {
           category: string | null
+          content: string | null
           created_at: string | null
           description: string | null
           difficulty: Database["public"]["Enums"]["difficulty_level"] | null
@@ -54,9 +55,11 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           updated_at: string | null
+          video_url: string | null
         }
         Insert: {
           category?: string | null
+          content?: string | null
           created_at?: string | null
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
@@ -65,9 +68,11 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
+          video_url?: string | null
         }
         Update: {
           category?: string | null
+          content?: string | null
           created_at?: string | null
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
@@ -76,6 +81,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
+          video_url?: string | null
         }
         Relationships: [
           {

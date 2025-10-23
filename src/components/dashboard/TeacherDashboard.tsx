@@ -104,12 +104,12 @@ export const TeacherDashboard = () => {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {courses.map((course) => (
-                <Card key={course.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                <Card key={course.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="text-lg">{course.title}</CardTitle>
                     <CardDescription className="line-clamp-2">{course.description}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
@@ -120,6 +120,14 @@ export const TeacherDashboard = () => {
                         <span>{course.quizzes?.[0]?.count || 0} quizzes</span>
                       </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate(`/quizzes/manage?courseId=${course.id}`)}
+                    >
+                      Manage Quizzes
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
